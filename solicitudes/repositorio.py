@@ -100,6 +100,16 @@ class Repositorio:
             )
             self._insertar_historial(con, cursor.lastrowid, entrada_historial)
 
+    def actualizar(self, solicitud_id, cambios, entrada_historial):
+        """Aplica los cambios y registra el historial en la misma transacción."""
+        columnas = ", ".join(f"{campo} = ?" for campo in cambios)
+        with self._conexion() as con:
+            con.execute(
+                f"UPDATE solicitudes SET {columnas} WHERE id = ?",
+                (*cambios.values(), solicitud_id),
+            )
+            self._insertar_historial(con, solicitud_id, entrada_historial)
+
     def obtener(self, codigo):
         with self._conexion() as con:
             fila = con.execute(

@@ -54,3 +54,19 @@ class ServicioSolicitudes:
         solicitud = self._obtener(codigo)
         solicitud["historial"] = self.repo.historial(solicitud.pop("id"))
         return solicitud
+
+    def _guardar_cambio(self, solicitud, cambios, accion, detalle, usuario):
+        """Guarda el cambio y su entrada de historial en una sola transacción."""
+        fecha = ahora()
+        entrada = {
+            "fecha": fecha,
+            "accion": accion,
+            "detalle": detalle,
+            "estado_anterior": solicitud["estado"],
+            "estado_nuevo": cambios.get("estado", solicitud["estado"]),
+            "usuario": usuario,
+        }
+        self.repo.actualizar(
+            solicitud["id"], {**cambios, "fecha_actualizacion": fecha}, entrada
+        )
+        return self.consultar(solicitud["codigo"])
