@@ -74,6 +74,14 @@ def test_categoria_y_prioridad_invalidas(datos_validos):
         ("solicitante", "x" * 100, True),
         ("solicitante", "x" * 101, False),
     ],
+    ids=[
+        "descripcion-9-caracteres",
+        "descripcion-10-caracteres",
+        "descripcion-1000-caracteres",
+        "descripcion-1001-caracteres",
+        "solicitante-100-caracteres",
+        "solicitante-101-caracteres",
+    ],
 )
 def test_limites_de_longitud(datos_validos, campo, valor, valido):
     datos_validos[campo] = valor
