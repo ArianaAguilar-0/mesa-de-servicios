@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block titulo %}Portal de docentes y estudiantes{% endblock %}
+{% block seccion %}Portal de docentes y estudiantes{% endblock %}
+{% block contenido %}
+{% for categoria, codigo_nuevo in get_flashed_messages(with_categories=true) %}
+  {% if categoria == "registrada" %}
+  <div class="aviso ok" role="status">
+    Su solicitud fue registrada. Su código es <span class="codigo">{{ codigo_nuevo }}</span>.
+    Guárdelo para consultar el avance.
+  </div>
+  {% endif %}
+{% endfor %}
+
+{% if solicitud %}
+<section class="tarjeta">
+  <h2>Su solicitud</h2>
+  {% include "_datos_solicitud.html" %}
+</section>
+<section class="tarjeta">
+  {% include "_historial.html" %}
+</section>
+{% endif %}
+
+<div class="rejilla dos">
+  <section class="tarjeta">
+    <h2>Reportar un problema</h2>
+    {% if errores %}
+    <div class="aviso error" role="alert">Revise los campos marcados para poder registrar su solicitud.</div>
+    {% endif %}
+    <form method="post" action="{{ url_for('portal_registrar') }}" novalidate>
+      <label for="solicitante">Su nombre</label>
+      <input id="solicitante" name="solicitante" maxlength="100" value="{{ datos.solicitante or '' }}"
+             class="{{ 'invalido' if errores.solicitante }}">
+      {% if errores.solicitante %}<p class="error-campo">{{ errores.solicitante }}</p>{% endif %}
+
+      <label for="categoria">Tipo de problema</label>
+      <select id="categoria" name="categoria" class="{{ 'invalido' if errores.categoria }}">
+        <option value="">Seleccione una opción</option>
+        {% for c in CATEGORIAS %}
+        <option value="{{ c }}" {{ 'selected' if datos.categoria == c }}>{{ c | etiqueta }}</option>
+        {% endfor %}
+      </select>
+      {% if errores.categoria %}<p class="error-campo">{{ errores.categoria }}</p>{% endif %}
+
+      <label for="prioridad">¿Qué tan urgente es?</label>
+      <select id="prioridad" name="prioridad" class="{{ 'invalido' if errores.prioridad }}">
+        <option value="">Seleccione una opción</option>
+        {% for p in PRIORIDADES %}
+        <option value="{{ p }}" {{ 'selected' if datos.prioridad == p }}>{{ p | etiqueta }}</option>
+        {% endfor %}
+      </select>
+      {% if errores.prioridad %}<p class="error-campo">{{ errores.prioridad }}</p>{% endif %}
+
+      <label for="descripcion">Describa el problema</label>
+      <textarea id="descripcion" name="descripcion" maxlength="1000"
+                class="{{ 'invalido' if errores.descripcion }}">{{ datos.descripcion or '' }}</textarea>
+      <p class="ayuda">Entre 10 y 1000 caracteres. Indique qué pasa y dónde (aula, laboratorio, equipo).</p>
+      {% if errores.descripcion %}<p class="error-campo">{{ errores.descripcion }}</p>{% endif %}
+
+      <button type="submit">Registrar solicitud</button>
+    </form>
+  </section>
+
+  <section class="tarjeta">
+    <h2>Consultar una solicitud</h2>
+    <form method="get" action="{{ url_for('portal') }}">
+      <label for="codigo">Código de la solicitud</label>
+      <input id="codigo" name="codigo" placeholder="SOL-AAAAMMDD-XXXXXX" value="{{ codigo }}"
+             class="{{ 'invalido' if error_consulta }}">
+      {% if error_consulta %}<p class="error-campo">{{ error_consulta }}</p>{% endif %}
+      <button type="submit">Consultar</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

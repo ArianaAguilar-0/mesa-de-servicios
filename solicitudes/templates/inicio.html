@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block titulo %}Inicio{% endblock %}
+{% block contenido %}
+<h1>¿Quién está ingresando?</h1>
+<div class="opciones">
+  <a class="tarjeta opcion" href="{{ url_for('portal') }}">
+    <strong>Docente o estudiante</strong>
+    Reporte un problema o consulte el avance de su solicitud.
+  </a>
+  <a class="tarjeta opcion" href="/soporte">
+    <strong>Personal de soporte técnico</strong>
+    Atienda, asigne y actualice las solicitudes recibidas.
+  </a>
+</div>
+{% endblock %}
