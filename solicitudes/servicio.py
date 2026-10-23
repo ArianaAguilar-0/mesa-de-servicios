@@ -4,7 +4,13 @@ from datetime import datetime
 
 from .codigo import generar_codigo, normalizar_codigo
 from .errores import ErrorValidacion, SolicitudNoEncontrada
-from .validacion import texto, validar_no_final, validar_solicitud, validar_tecnico
+from .validacion import (
+    texto,
+    validar_no_final,
+    validar_solicitud,
+    validar_tecnico,
+    validar_transicion,
+)
 
 USUARIO_SOPORTE = "soporte"
 
@@ -94,4 +100,21 @@ class ServicioSolicitudes:
             cambios["estado"] = "asignada"
         return self._guardar_cambio(
             solicitud, cambios, "asignacion", detalle, texto(usuario) or USUARIO_SOPORTE
+        )
+
+    def cambiar_estado(self, codigo, estado, comentario=None, usuario=None):
+        """Cambia el estado respetando las transiciones permitidas."""
+        solicitud = self._obtener(codigo)
+        nuevo, comentario = validar_transicion(
+            solicitud["estado"], estado, solicitud["tecnico"], comentario
+        )
+        detalle = f"Estado cambiado de '{solicitud['estado']}' a '{nuevo}'."
+        if comentario:
+            detalle += f" Comentario: {comentario}"
+        return self._guardar_cambio(
+            solicitud,
+            {"estado": nuevo},
+            "cambio_estado",
+            detalle,
+            texto(usuario) or USUARIO_SOPORTE,
         )
