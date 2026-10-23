@@ -6,7 +6,7 @@ Ejecutar con: python -m solicitudes.app
 import os
 import secrets
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
 
 from .errores import ErrorValidacion, SolicitudNoEncontrada
 from .repositorio import Repositorio
@@ -64,6 +64,7 @@ def create_app(ruta_db=None, secret_key=None):
 
     _rutas_portal(app, servicio)
     _rutas_soporte(app, servicio)
+    _rutas_api(app, servicio)
     return app
 
 
@@ -160,6 +161,51 @@ def _rutas_soporte(app, servicio):
                 codigo, request.form.get("estado"), request.form.get("comentario")
             ),
             "El estado de la solicitud se actualizó.",
+        )
+
+
+def _rutas_api(app, servicio):
+    def cuerpo_json():
+        datos = request.get_json(silent=True)
+        if not isinstance(datos, dict):
+            raise ErrorValidacion(
+                {"cuerpo": "Envíe los datos en formato JSON, como un objeto con sus campos."}
+            )
+        return datos
+
+    @app.errorhandler(ErrorValidacion)
+    def error_validacion(e):
+        return (
+            jsonify({"error": "Los datos enviados no son válidos.", "detalles": e.detalles}),
+            400,
+        )
+
+    @app.errorhandler(SolicitudNoEncontrada)
+    def no_encontrada(e):
+        return jsonify({"error": str(e)}), 404
+
+    @app.post("/api/solicitudes")
+    def api_registrar():
+        return jsonify(servicio.registrar(cuerpo_json())), 201
+
+    @app.get("/api/solicitudes/<codigo>")
+    def api_consultar(codigo):
+        return jsonify(servicio.consultar(codigo))
+
+    @app.put("/api/solicitudes/<codigo>/tecnico")
+    def api_asignar(codigo):
+        datos = cuerpo_json()
+        return jsonify(
+            servicio.asignar_tecnico(codigo, datos.get("tecnico"), datos.get("usuario"))
+        )
+
+    @app.put("/api/solicitudes/<codigo>/estado")
+    def api_estado(codigo):
+        datos = cuerpo_json()
+        return jsonify(
+            servicio.cambiar_estado(
+                codigo, datos.get("estado"), datos.get("comentario"), datos.get("usuario")
+            )
         )
 
 
