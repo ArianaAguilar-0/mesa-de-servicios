@@ -11,7 +11,7 @@ from flask import Flask, flash, redirect, render_template, request, url_for
 from .errores import ErrorValidacion, SolicitudNoEncontrada
 from .repositorio import Repositorio
 from .servicio import ServicioSolicitudes
-from .validacion import CATEGORIAS, PRIORIDADES
+from .validacion import CATEGORIAS, ESTADOS, PRIORIDADES, estados_permitidos
 
 ETIQUETAS = {
     "registrada": "Registrada",
@@ -52,13 +52,18 @@ def create_app(ruta_db=None, secret_key=None):
 
     @app.context_processor
     def opciones():
-        return {"CATEGORIAS": CATEGORIAS, "PRIORIDADES": PRIORIDADES}
+        return {
+            "CATEGORIAS": CATEGORIAS,
+            "PRIORIDADES": PRIORIDADES,
+            "ESTADOS": ESTADOS,
+        }
 
     @app.get("/")
     def inicio():
         return render_template("inicio.html")
 
     _rutas_portal(app, servicio)
+    _rutas_soporte(app, servicio)
     return app
 
 
@@ -95,6 +100,67 @@ def _rutas_portal(app, servicio):
             return mostrar_portal(request.form, e.detalles, 400)
         flash(solicitud["codigo"], "registrada")
         return redirect(url_for("portal", codigo=solicitud["codigo"]))
+
+
+def _rutas_soporte(app, servicio):
+    @app.get("/soporte")
+    def soporte():
+        estado = request.args.get("estado", "")
+        codigo = request.args.get("codigo", "")
+        return render_template(
+            "soporte.html",
+            solicitudes=servicio.listar(estado, codigo),
+            estado=estado,
+            codigo=codigo,
+        )
+
+    def mostrar_detalle(codigo, datos=None, errores=None, estado_http=200):
+        try:
+            solicitud = servicio.consultar(codigo)
+        except (ErrorValidacion, SolicitudNoEncontrada) as e:
+            flash(str(e), "error")
+            return redirect(url_for("soporte"))
+        html = render_template(
+            "soporte_detalle.html",
+            solicitud=solicitud,
+            permitidos=estados_permitidos(solicitud["estado"]),
+            datos=datos or {},
+            errores=errores or {},
+        )
+        return html, estado_http
+
+    @app.get("/soporte/<codigo>")
+    def soporte_detalle(codigo):
+        return mostrar_detalle(codigo)
+
+    def aplicar(codigo, accion, mensaje_ok):
+        try:
+            solicitud = accion()
+        except SolicitudNoEncontrada as e:
+            flash(str(e), "error")
+            return redirect(url_for("soporte"))
+        except ErrorValidacion as e:
+            return mostrar_detalle(codigo, request.form, e.detalles, 400)
+        flash(mensaje_ok, "ok")
+        return redirect(url_for("soporte_detalle", codigo=solicitud["codigo"]))
+
+    @app.post("/soporte/<codigo>/tecnico")
+    def soporte_asignar(codigo):
+        return aplicar(
+            codigo,
+            lambda: servicio.asignar_tecnico(codigo, request.form.get("tecnico")),
+            "El técnico quedó asignado.",
+        )
+
+    @app.post("/soporte/<codigo>/estado")
+    def soporte_estado(codigo):
+        return aplicar(
+            codigo,
+            lambda: servicio.cambiar_estado(
+                codigo, request.form.get("estado"), request.form.get("comentario")
+            ),
+            "El estado de la solicitud se actualizó.",
+        )
 
 
 def main():

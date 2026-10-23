@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block titulo %}{{ solicitud.codigo }}{% endblock %}
+{% block seccion %}Panel de soporte técnico{% endblock %}
+{% block contenido %}
+<p><a href="{{ url_for('soporte') }}">← Volver al listado</a></p>
+<h1 class="codigo">{{ solicitud.codigo }}</h1>
+{% include "_avisos.html" %}
+
+<div class="rejilla dos">
+  <section class="tarjeta">
+    <h2>Datos de la solicitud</h2>
+    {% include "_datos_solicitud.html" %}
+  </section>
+
+  <div>
+    {% if solicitud.estado in ("cerrada", "cancelada") %}
+    <section class="tarjeta">
+      <p class="vacio">La solicitud está {{ solicitud.estado }} y ya no admite cambios.</p>
+    </section>
+    {% else %}
+    <section class="tarjeta">
+      <h2>Asignar técnico</h2>
+      <form method="post" action="{{ url_for('soporte_asignar', codigo=solicitud.codigo) }}" novalidate>
+        <label for="tecnico">Nombre del técnico</label>
+        <input id="tecnico" name="tecnico" maxlength="100"
+               value="{{ datos.tecnico if datos.tecnico is defined else (solicitud.tecnico or '') }}"
+               class="{{ 'invalido' if errores.tecnico }}">
+        {% if errores.tecnico %}<p class="error-campo">{{ errores.tecnico }}</p>{% endif %}
+        <button type="submit">{{ "Reasignar técnico" if solicitud.tecnico else "Asignar técnico" }}</button>
+      </form>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Cambiar estado</h2>
+      <form method="post" action="{{ url_for('soporte_estado', codigo=solicitud.codigo) }}" novalidate>
+        <label for="estado">Nuevo estado</label>
+        <select id="estado" name="estado" class="{{ 'invalido' if errores.estado }}">
+          {% for e in permitidos %}
+          <option value="{{ e }}" {{ 'selected' if datos.estado == e }}>{{ e | etiqueta }}</option>
+          {% endfor %}
+        </select>
+        {% if errores.estado %}<p class="error-campo">{{ errores.estado }}</p>{% endif %}
+
+        <label for="comentario">Comentario</label>
+        <textarea id="comentario" name="comentario" maxlength="1000"
+                  class="{{ 'invalido' if errores.comentario }}">{{ datos.comentario or '' }}</textarea>
+        <p class="ayuda">Obligatorio solo al cerrar la solicitud.</p>
+        {% if errores.comentario %}<p class="error-campo">{{ errores.comentario }}</p>{% endif %}
+        <button type="submit">Cambiar estado</button>
+      </form>
+    </section>
+    {% endif %}
+  </div>
+</div>
+
+<section class="tarjeta">
+  {% include "_historial.html" %}
+</section>
+{% endblock %}
