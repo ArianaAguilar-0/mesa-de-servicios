@@ -5,6 +5,7 @@ from datetime import datetime
 from .codigo import generar_codigo, normalizar_codigo
 from .errores import ErrorValidacion, SolicitudNoEncontrada
 from .validacion import (
+    ESTADOS,
     texto,
     validar_no_final,
     validar_solicitud,
@@ -62,6 +63,13 @@ class ServicioSolicitudes:
         solicitud = self._obtener(codigo)
         solicitud["historial"] = self.repo.historial(solicitud.pop("id"))
         return solicitud
+
+    def listar(self, estado=None, codigo=None):
+        """Lista solicitudes filtrando por estado y por parte del código."""
+        estado = texto(estado).lower()
+        if estado not in ESTADOS:
+            estado = None
+        return self.repo.listar(estado, normalizar_codigo(codigo) or None)
 
     def _guardar_cambio(self, solicitud, cambios, accion, detalle, usuario):
         """Guarda el cambio y su entrada de historial en una sola transacción."""

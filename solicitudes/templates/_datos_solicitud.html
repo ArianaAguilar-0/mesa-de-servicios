@@ -1,0 +1,10 @@
+<dl class="datos">
+  <dt>Código</dt><dd class="codigo">{{ solicitud.codigo }}</dd>
+  <dt>Estado</dt><dd><span class="estado" data-estado="{{ solicitud.estado }}">{{ solicitud.estado | etiqueta }}</span></dd>
+  <dt>Técnico</dt><dd>{{ solicitud.tecnico or "Sin asignar todavía" }}</dd>
+  <dt>Solicitante</dt><dd>{{ solicitud.solicitante }}</dd>
+  <dt>Categoría</dt><dd>{{ solicitud.categoria | etiqueta }}</dd>
+  <dt>Prioridad</dt><dd>{{ solicitud.prioridad | etiqueta }}</dd>
+  <dt>Registrada</dt><dd>{{ solicitud.fecha_creacion }}</dd>
+  <dt>Descripción</dt><dd>{{ solicitud.descripcion }}</dd>
+</dl>

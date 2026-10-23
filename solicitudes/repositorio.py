@@ -117,6 +117,22 @@ class Repositorio:
             ).fetchone()
         return dict(fila) if fila else None
 
+    def listar(self, estado=None, codigo=None):
+        """Lista solicitudes, de la más reciente a la más antigua."""
+        condiciones, parametros = [], []
+        if estado:
+            condiciones.append("estado = ?")
+            parametros.append(estado)
+        if codigo:
+            condiciones.append("instr(codigo, ?) > 0")
+            parametros.append(codigo)
+        donde = f"WHERE {' AND '.join(condiciones)}" if condiciones else ""
+        with self._conexion() as con:
+            filas = con.execute(
+                f"SELECT * FROM solicitudes {donde} ORDER BY id DESC", parametros
+            ).fetchall()
+        return [dict(f) for f in filas]
+
     def historial(self, solicitud_id):
         with self._conexion() as con:
             filas = con.execute(

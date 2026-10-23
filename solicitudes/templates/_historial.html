@@ -1,0 +1,12 @@
+<h2>Avance de la solicitud</h2>
+<ol class="historial">
+  {% for h in solicitud.historial %}
+  <li>
+    <div><strong>{{ h.accion | etiqueta }}</strong>
+      {% if h.estado_nuevo %}<span class="estado" data-estado="{{ h.estado_nuevo }}">{{ h.estado_nuevo | etiqueta }}</span>{% endif %}
+    </div>
+    <div>{{ h.detalle }}</div>
+    <div class="meta">{{ h.fecha }} · {{ h.usuario }}</div>
+  </li>
+  {% endfor %}
+</ol>

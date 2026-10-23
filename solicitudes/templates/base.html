@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Mesa de Servicio{% endblock %} · Soporte Técnico</title>
+  <style>
+    :root {
+      --fondo: #f4f6f9; --tarjeta: #fff; --texto: #1f2933; --suave: #616e7c;
+      --borde: #d9e2ec; --primario: #1d4ed8; --primario-osc: #1e40af;
+      --error: #b42318; --error-fondo: #fef3f2; --ok: #067647; --ok-fondo: #ecfdf3;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+           background: var(--fondo); color: var(--texto); line-height: 1.5; }
+    header { background: var(--primario); color: #fff; }
+    header .contenedor { display: flex; align-items: center; justify-content: space-between;
+                         gap: 1rem; padding-top: .9rem; padding-bottom: .9rem; }
+    header a { color: #fff; text-decoration: none; font-weight: 600; }
+    header small { opacity: .85; }
+    .contenedor { max-width: 1000px; margin: 0 auto; padding: 0 16px; }
+    main { padding: 1.5rem 0 3rem; }
+    h1 { font-size: 1.6rem; margin: 0 0 1rem; }
+    h2 { font-size: 1.2rem; margin: 0 0 .75rem; }
+    .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px;
+               padding: 1.25rem; margin-bottom: 1.25rem; }
+    .rejilla { display: grid; gap: 1.25rem; grid-template-columns: 1fr; }
+    @media (min-width: 800px) { .rejilla.dos { grid-template-columns: 1fr 1fr; } }
+    label { display: block; font-weight: 600; margin: .75rem 0 .25rem; }
+    input, select, textarea { width: 100%; padding: .6rem .7rem; font: inherit; color: inherit;
+                              border: 1px solid var(--borde); border-radius: 8px; background: #fff; }
+    textarea { min-height: 110px; resize: vertical; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid var(--primario); outline-offset: 1px; }
+    .invalido { border-color: var(--error); background: var(--error-fondo); }
+    .error-campo { color: var(--error); font-size: .9rem; margin: .25rem 0 0; }
+    .ayuda { color: var(--suave); font-size: .85rem; margin: .2rem 0 0; }
+    button, .boton { display: inline-block; margin-top: 1rem; padding: .65rem 1.2rem; border: 0;
+                     border-radius: 8px; background: var(--primario); color: #fff; font: inherit;
+                     font-weight: 600; cursor: pointer; text-decoration: none; }
+    button:hover, .boton:hover { background: var(--primario-osc); }
+    .aviso { padding: .9rem 1rem; border-radius: 8px; margin-bottom: 1.25rem; }
+    .aviso.ok { background: var(--ok-fondo); color: var(--ok); border: 1px solid #abefc6; }
+    .aviso.error { background: var(--error-fondo); color: var(--error); border: 1px solid #fecdca; }
+    .codigo { font-family: ui-monospace, Consolas, monospace; font-weight: 700; letter-spacing: .02em; }
+    .estado { display: inline-block; padding: .15rem .6rem; border-radius: 999px; font-size: .85rem;
+              font-weight: 600; background: #e0e7ff; color: #3730a3; white-space: nowrap; }
+    .estado[data-estado="asignada"] { background: #fef0c7; color: #93370d; }
+    .estado[data-estado="en_proceso"] { background: #d1e9ff; color: #194185; }
+    .estado[data-estado="resuelta"] { background: #d1fadf; color: #05603a; }
+    .estado[data-estado="cerrada"] { background: #e4e7ec; color: #344054; }
+    .estado[data-estado="cancelada"] { background: #fee4e2; color: #912018; }
+    dl.datos { display: grid; grid-template-columns: max-content 1fr; gap: .4rem 1rem; margin: 0; }
+    dl.datos dt { color: var(--suave); }
+    dl.datos dd { margin: 0; overflow-wrap: anywhere; }
+    ol.historial { list-style: none; padding: 0; margin: 0; border-left: 3px solid var(--borde); }
+    ol.historial li { position: relative; padding: 0 0 1rem 1rem; }
+    ol.historial li::before { content: ""; position: absolute; left: -8px; top: .35rem; width: 13px;
+                              height: 13px; border-radius: 50%; background: var(--primario); }
+    ol.historial .meta { color: var(--suave); font-size: .85rem; }
+    .tabla { width: 100%; border-collapse: collapse; }
+    .tabla th, .tabla td { text-align: left; padding: .6rem .5rem; border-bottom: 1px solid var(--borde); }
+    .tabla th { color: var(--suave); font-size: .85rem; font-weight: 600; }
+    @media (max-width: 640px) {
+      .tabla thead { display: none; }
+      .tabla tr { display: block; border-bottom: 1px solid var(--borde); padding: .5rem 0; }
+      .tabla td { display: block; border: 0; padding: .15rem 0; }
+    }
+    .filtros { display: grid; gap: .75rem; grid-template-columns: 1fr; align-items: end; }
+    @media (min-width: 640px) { .filtros { grid-template-columns: 1fr 1fr auto; } }
+    .filtros label { margin-top: 0; }
+    .filtros button { margin-top: 0; }
+    .opciones { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+    @media (min-width: 640px) { .opciones { grid-template-columns: 1fr 1fr; } }
+    .opcion { display: block; padding: 1.5rem; text-decoration: none; color: inherit; }
+    .opcion:hover { border-color: var(--primario); }
+    .opcion strong { display: block; font-size: 1.15rem; color: var(--primario); margin-bottom: .3rem; }
+    .vacio { color: var(--suave); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="contenedor">
+      <a href="{{ url_for('inicio') }}">Mesa de Servicio</a>
+      <small>{% block seccion %}Soporte técnico universitario{% endblock %}</small>
+    </div>
+  </header>
+  <main class="contenedor">
+    {% block contenido %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titulo %}Panel de soporte técnico{% endblock %}
+{% block seccion %}Panel de soporte técnico{% endblock %}
+{% block contenido %}
+<h1>Solicitudes</h1>
+{% include "_avisos.html" %}
+
+<form class="tarjeta filtros" method="get" action="{{ url_for('soporte') }}">
+  <div>
+    <label for="estado">Estado</label>
+    <select id="estado" name="estado">
+      <option value="">Todos</option>
+      {% for e in ESTADOS %}
+      <option value="{{ e }}" {{ 'selected' if estado == e }}>{{ e | etiqueta }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="codigo">Buscar por código</label>
+    <input id="codigo" name="codigo" value="{{ codigo }}" placeholder="SOL-…">
+  </div>
+  <button type="submit">Filtrar</button>
+</form>
+
+<section class="tarjeta">
+  {% if solicitudes %}
+  <table class="tabla">
+    <thead>
+      <tr><th>Código</th><th>Solicitante</th><th>Categoría</th><th>Prioridad</th><th>Estado</th><th>Técnico</th></tr>
+    </thead>
+    <tbody>
+      {% for s in solicitudes %}
+      <tr>
+        <td><a class="codigo" href="{{ url_for('soporte_detalle', codigo=s.codigo) }}">{{ s.codigo }}</a></td>
+        <td>{{ s.solicitante }}</td>
+        <td>{{ s.categoria }}</td>
+        <td>{{ s.prioridad | etiqueta }}</td>
+        <td><span class="estado" data-estado="{{ s.estado }}">{{ s.estado | etiqueta }}</span></td>
+        <td>{{ s.tecnico or "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="vacio">No hay solicitudes que coincidan con la búsqueda.</p>
+  {% endif %}
+</section>
+{% endblock %}
