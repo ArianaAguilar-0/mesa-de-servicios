@@ -30,6 +30,12 @@ def cliente(app):
 
 
 @pytest.fixture
+def servicio_app(app):
+    """El mismo servicio que usa la aplicación web."""
+    return app.extensions["servicio"]
+
+
+@pytest.fixture
 def datos_validos():
     return {
         "solicitante": "Ana Pérez",
