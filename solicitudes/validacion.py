@@ -5,9 +5,23 @@ from .errores import ErrorValidacion
 CATEGORIAS = ("hardware", "software", "redes", "accesos", "otro")
 PRIORIDADES = ("baja", "media", "alta", "critica")
 
+ESTADOS = ("registrada", "asignada", "en_proceso", "resuelta", "cerrada", "cancelada")
+ESTADOS_FINALES = ("cerrada", "cancelada")
+TRANSICIONES = {
+    "registrada": ("asignada", "cancelada"),
+    "asignada": ("en_proceso", "cancelada"),
+    "en_proceso": ("resuelta", "asignada", "cancelada"),
+    "resuelta": ("cerrada", "en_proceso"),
+    "cerrada": (),
+    "cancelada": (),
+}
+REQUIEREN_TECNICO = ("asignada", "en_proceso", "resuelta")
+
 MAX_SOLICITANTE = 100
+MAX_TECNICO = 100
 MIN_DESCRIPCION = 10
 MAX_DESCRIPCION = 1000
+MAX_COMENTARIO = 1000
 
 
 def texto(valor):
@@ -77,3 +91,80 @@ def validar_solicitud(datos):
         "descripcion": descripcion,
         "prioridad": prioridad,
     }
+
+
+def validar_no_final(estado):
+    """Las solicitudes cerradas o canceladas no admiten cambios."""
+    if estado in ESTADOS_FINALES:
+        raise ErrorValidacion(
+            {"estado": f"La solicitud está '{estado}' y ya no admite cambios."}
+        )
+
+
+def validar_tecnico(tecnico):
+    """Devuelve el nombre del técnico limpio o lanza ErrorValidacion."""
+    tecnico = texto(tecnico)
+    if not tecnico:
+        raise ErrorValidacion(
+            {"tecnico": "Falta el nombre del técnico; es un campo obligatorio."}
+        )
+    if len(tecnico) > MAX_TECNICO:
+        raise ErrorValidacion(
+            {
+                "tecnico": "El nombre del técnico es muy largo; "
+                f"use como máximo {MAX_TECNICO} caracteres."
+            }
+        )
+    return tecnico
+
+
+def estados_permitidos(estado):
+    """Estados a los que puede pasar una solicitud desde `estado`."""
+    return TRANSICIONES.get(estado, ())
+
+
+def validar_transicion(actual, nuevo, tecnico, comentario):
+    """Valida un cambio de estado. Devuelve (estado, comentario) limpios."""
+    nuevo = texto(nuevo).lower()
+    comentario = texto(comentario)
+
+    if not nuevo:
+        raise ErrorValidacion(
+            {"estado": "Falta el nuevo estado; es un campo obligatorio."}
+        )
+    if nuevo not in ESTADOS:
+        raise ErrorValidacion(
+            {
+                "estado": f"El estado '{nuevo}' no es válido. "
+                f"Los estados posibles son: {', '.join(ESTADOS)}."
+            }
+        )
+    validar_no_final(actual)
+    permitidos = estados_permitidos(actual)
+    if nuevo not in permitidos:
+        raise ErrorValidacion(
+            {
+                "estado": f"No se puede cambiar de '{actual}' a '{nuevo}'. "
+                f"Desde '{actual}' solo puede pasar a: {', '.join(permitidos)}."
+            }
+        )
+
+    errores = {}
+    if nuevo in REQUIEREN_TECNICO and not texto(tecnico):
+        errores["tecnico"] = (
+            f"Para pasar la solicitud a '{nuevo}' primero asigne un técnico."
+        )
+    if nuevo == "cerrada" and not comentario:
+        errores["comentario"] = (
+            "Para cerrar la solicitud escriba un comentario que explique "
+            "cómo se resolvió."
+        )
+    elif len(comentario) > MAX_COMENTARIO:
+        errores["comentario"] = (
+            "El comentario es muy largo; "
+            f"use como máximo {MAX_COMENTARIO} caracteres."
+        )
+    if errores:
+        raise ErrorValidacion(errores)
+
+    return nuevo, comentario
