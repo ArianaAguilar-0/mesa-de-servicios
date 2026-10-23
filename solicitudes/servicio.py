@@ -4,7 +4,9 @@ from datetime import datetime
 
 from .codigo import generar_codigo, normalizar_codigo
 from .errores import ErrorValidacion, SolicitudNoEncontrada
-from .validacion import texto, validar_solicitud
+from .validacion import texto, validar_no_final, validar_solicitud, validar_tecnico
+
+USUARIO_SOPORTE = "soporte"
 
 
 def ahora():
@@ -70,3 +72,26 @@ class ServicioSolicitudes:
             solicitud["id"], {**cambios, "fecha_actualizacion": fecha}, entrada
         )
         return self.consultar(solicitud["codigo"])
+
+    def asignar_tecnico(self, codigo, tecnico, usuario=None):
+        """Asigna o reasigna un técnico. Si está 'registrada', pasa a 'asignada'."""
+        solicitud = self._obtener(codigo)
+        validar_no_final(solicitud["estado"])
+        tecnico = validar_tecnico(tecnico)
+
+        anterior = solicitud["tecnico"]
+        if anterior == tecnico:
+            raise ErrorValidacion(
+                {"tecnico": f"La solicitud ya está asignada a {tecnico}."}
+            )
+        if anterior:
+            detalle = f"Técnico reasignado de {anterior} a {tecnico}."
+        else:
+            detalle = f"Técnico asignado: {tecnico}."
+
+        cambios = {"tecnico": tecnico}
+        if solicitud["estado"] == "registrada":
+            cambios["estado"] = "asignada"
+        return self._guardar_cambio(
+            solicitud, cambios, "asignacion", detalle, texto(usuario) or USUARIO_SOPORTE
+        )

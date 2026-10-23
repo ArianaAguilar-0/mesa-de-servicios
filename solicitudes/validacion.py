@@ -5,7 +5,11 @@ from .errores import ErrorValidacion
 CATEGORIAS = ("hardware", "software", "redes", "accesos", "otro")
 PRIORIDADES = ("baja", "media", "alta", "critica")
 
+ESTADOS = ("registrada", "asignada", "en_proceso", "resuelta", "cerrada", "cancelada")
+ESTADOS_FINALES = ("cerrada", "cancelada")
+
 MAX_SOLICITANTE = 100
+MAX_TECNICO = 100
 MIN_DESCRIPCION = 10
 MAX_DESCRIPCION = 1000
 
@@ -77,3 +81,28 @@ def validar_solicitud(datos):
         "descripcion": descripcion,
         "prioridad": prioridad,
     }
+
+
+def validar_no_final(estado):
+    """Las solicitudes cerradas o canceladas no admiten cambios."""
+    if estado in ESTADOS_FINALES:
+        raise ErrorValidacion(
+            {"estado": f"La solicitud está '{estado}' y ya no admite cambios."}
+        )
+
+
+def validar_tecnico(tecnico):
+    """Devuelve el nombre del técnico limpio o lanza ErrorValidacion."""
+    tecnico = texto(tecnico)
+    if not tecnico:
+        raise ErrorValidacion(
+            {"tecnico": "Falta el nombre del técnico; es un campo obligatorio."}
+        )
+    if len(tecnico) > MAX_TECNICO:
+        raise ErrorValidacion(
+            {
+                "tecnico": "El nombre del técnico es muy largo; "
+                f"use como máximo {MAX_TECNICO} caracteres."
+            }
+        )
+    return tecnico
