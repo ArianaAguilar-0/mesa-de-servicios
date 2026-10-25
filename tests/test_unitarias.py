@@ -180,3 +180,6 @@ def test_comentario_obligatorio_al_cerrar():
 )
 def test_comentario_opcional_en_los_demas_casos(actual, nuevo):
     assert validar_transicion(actual, nuevo, "Luis", None) == (nuevo, "")
+
+def test_fallo_intencionSSal():
+    assert False, "Prueba que falla a propósito para comprobar el bloqueo del pipeline"
