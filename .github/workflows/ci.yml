@@ -10,6 +10,10 @@ on:
 
 permissions:
   contents: read
+# bash con 'pipefail': si un comando falla dentro de "comando | tee", el paso falla.
+defaults:
+  run:
+    shell: bash
 
 jobs:
   verificar:
