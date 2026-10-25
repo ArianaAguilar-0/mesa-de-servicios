@@ -1,0 +1,7 @@
+# Configuración del análisis estático (Ruff).
+# E = errores de estilo graves (PEP 8), F = errores lógicos (Pyflakes):
+# variables no definidas, imports sin usar, código inalcanzable, etc.
+line-length = 120
+
+[lint]
+select = ["E", "F"]
