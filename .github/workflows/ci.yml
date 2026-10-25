@@ -1,0 +1,62 @@
+# Pipeline de integración continua de la Mesa de Servicio.
+# Se ejecuta en cada push y en cada Pull Request hacia main.
+# Si cualquier paso falla, el pipeline queda en rojo y la versión NO es liberable.
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Instalar, analizar y probar
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff==0.17.2 pip-audit==2.10.1
+          mkdir -p reportes
+
+      - name: Análisis estático (Ruff)
+        run: ruff check . --output-format=full | tee reportes/analisis-estatico.txt
+
+      - name: Revisar dependencias vulnerables (pip-audit)
+        run: pip-audit -r requirements.txt | tee reportes/dependencias.txt
+
+      - name: Ejecutar pruebas (pytest)
+        run: python -m pytest -v --junitxml=reportes/pruebas.xml | tee reportes/pruebas.txt
+
+      - name: Marcar la versión como liberable
+        run: |
+          {
+            echo "VERSIÓN LIBERABLE"
+            echo "Commit: ${GITHUB_SHA}"
+            echo "Rama:   ${GITHUB_REF_NAME}"
+            echo "Fecha:  $(date -u '+%Y-%m-%d %H:%M UTC')"
+            echo "Análisis estático, revisión de dependencias y pruebas: aprobados."
+          } > reportes/LIBERABLE.txt
+          echo "###  Versión liberable: todas las verificaciones pasaron" >> "$GITHUB_STEP_SUMMARY"
+          tail -n 1 reportes/pruebas.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar reportes de ejecución
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-ejecucion
+          path: reportes/
