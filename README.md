@@ -23,12 +23,13 @@ pip install -r requirements.txt
 python -m solicitudes.app
 ```
 
-Abra http://127.0.0.1:5000 en el navegador.
+Abra http://127.0.0.1:5000 en el navegador. 
 
-Opcionalmente puede definir las variables de entorno `SECRET_KEY`, `SOLICITUDES_DB` y `SOLICITUDES_PORT` (vea `.env.example`).
+Para detener el sistema: `Ctrl + C`
 
 ## Pruebas
 
 ```powershell
 python -m pytest -v
 ```
+Debe mostrar todas las pruebas en estado `PASSED`.
