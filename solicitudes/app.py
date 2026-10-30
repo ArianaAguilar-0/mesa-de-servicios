@@ -5,9 +5,11 @@ Ejecutar con: python -m solicitudes.app
 
 import os
 import secrets
+from functools import wraps
 
-from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
 
+from .autenticacion import verificar
 from .errores import ErrorValidacion, SolicitudNoEncontrada
 from .repositorio import Repositorio
 from .servicio import ServicioSolicitudes
@@ -32,6 +34,7 @@ ETIQUETAS = {
     "registro": "Registro",
     "asignacion": "Asignación",
     "cambio_estado": "Cambio de estado",
+    "vencimiento": "Vencimiento",
 }
 
 
@@ -41,6 +44,8 @@ def create_app(ruta_db=None, secret_key=None):
         secret_key or os.environ.get("SECRET_KEY") or secrets.token_hex(32)
     )
     app.json.ensure_ascii = False
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
     ruta_db = ruta_db or os.environ.get("SOLICITUDES_DB") or "solicitudes.db"
     servicio = ServicioSolicitudes(Repositorio(ruta_db))
@@ -56,16 +61,62 @@ def create_app(ruta_db=None, secret_key=None):
             "CATEGORIAS": CATEGORIAS,
             "PRIORIDADES": PRIORIDADES,
             "ESTADOS": ESTADOS,
+            "usuario_actual": session.get("usuario"),
         }
 
     @app.get("/")
     def inicio():
         return render_template("inicio.html")
 
+    _rutas_acceso(app, servicio)
     _rutas_portal(app, servicio)
     _rutas_soporte(app, servicio)
     _rutas_api(app, servicio)
     return app
+
+
+def requiere_soporte(vista):
+    """Permite el acceso solo al personal de soporte con sesión iniciada."""
+
+    @wraps(vista)
+    def protegida(*args, **kwargs):
+        if not session.get("usuario"):
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "Inicie sesión como personal de soporte técnico."}), 401
+            return redirect(url_for("login", siguiente=request.path))
+        return vista(*args, **kwargs)
+
+    return protegida
+
+
+def _destino_seguro(siguiente):
+    """Solo se permite volver a una página de este mismo sitio."""
+    if siguiente and siguiente.startswith("/") and not siguiente.startswith("//"):
+        return siguiente
+    return url_for("soporte")
+
+
+def _rutas_acceso(app, servicio):
+    @app.get("/login")
+    def login():
+        return render_template("login.html", siguiente=request.args.get("siguiente", ""), error=None)
+
+    @app.post("/login")
+    def login_enviar():
+        usuario = verificar(servicio.repo, request.form.get("usuario"), request.form.get("contrasena"))
+        siguiente = request.form.get("siguiente", "")
+        if not usuario:
+            error = "Usuario o contraseña incorrectos."
+            return render_template("login.html", siguiente=siguiente, error=error), 401
+        session.clear()
+        session["usuario"] = usuario
+        return redirect(_destino_seguro(siguiente))
+
+    @app.post("/logout")
+    def logout():
+        session.clear()
+        flash("Cerró sesión correctamente.", "ok")
+        return redirect(url_for("inicio"))
 
 
 def _rutas_portal(app, servicio):
@@ -105,14 +156,17 @@ def _rutas_portal(app, servicio):
 
 def _rutas_soporte(app, servicio):
     @app.get("/soporte")
+    @requiere_soporte
     def soporte():
         estado = request.args.get("estado", "")
         codigo = request.args.get("codigo", "")
+        vencidas = request.args.get("vencidas") == "1"
         return render_template(
             "soporte.html",
-            solicitudes=servicio.listar(estado, codigo),
+            solicitudes=servicio.listar(estado, codigo, vencidas),
             estado=estado,
             codigo=codigo,
+            vencidas=vencidas,
         )
 
     def mostrar_detalle(codigo, datos=None, errores=None, estado_http=200):
@@ -131,6 +185,7 @@ def _rutas_soporte(app, servicio):
         return html, estado_http
 
     @app.get("/soporte/<codigo>")
+    @requiere_soporte
     def soporte_detalle(codigo):
         return mostrar_detalle(codigo)
 
@@ -146,19 +201,26 @@ def _rutas_soporte(app, servicio):
         return redirect(url_for("soporte_detalle", codigo=solicitud["codigo"]))
 
     @app.post("/soporte/<codigo>/tecnico")
+    @requiere_soporte
     def soporte_asignar(codigo):
         return aplicar(
             codigo,
-            lambda: servicio.asignar_tecnico(codigo, request.form.get("tecnico")),
+            lambda: servicio.asignar_tecnico(
+                codigo, request.form.get("tecnico"), session["usuario"]
+            ),
             "El técnico quedó asignado.",
         )
 
     @app.post("/soporte/<codigo>/estado")
+    @requiere_soporte
     def soporte_estado(codigo):
         return aplicar(
             codigo,
             lambda: servicio.cambiar_estado(
-                codigo, request.form.get("estado"), request.form.get("comentario")
+                codigo,
+                request.form.get("estado"),
+                request.form.get("comentario"),
+                session["usuario"],
             ),
             "El estado de la solicitud se actualizó.",
         )
@@ -193,18 +255,20 @@ def _rutas_api(app, servicio):
         return jsonify(servicio.consultar(codigo))
 
     @app.put("/api/solicitudes/<codigo>/tecnico")
+    @requiere_soporte
     def api_asignar(codigo):
         datos = cuerpo_json()
         return jsonify(
-            servicio.asignar_tecnico(codigo, datos.get("tecnico"), datos.get("usuario"))
+            servicio.asignar_tecnico(codigo, datos.get("tecnico"), session["usuario"])
         )
 
     @app.put("/api/solicitudes/<codigo>/estado")
+    @requiere_soporte
     def api_estado(codigo):
         datos = cuerpo_json()
         return jsonify(
             servicio.cambiar_estado(
-                codigo, datos.get("estado"), datos.get("comentario"), datos.get("usuario")
+                codigo, datos.get("estado"), datos.get("comentario"), session["usuario"]
             )
         )
 

@@ -17,6 +17,17 @@ pip install -r requirements.txt
 > Si PowerShell no permite activar el entorno, ejecute una sola vez:
 > `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
 
+## Cuenta de soporte técnico
+
+El panel de soporte (`/soporte`) requiere iniciar sesión. Cree al menos una cuenta
+(la contraseña se pide sin mostrarla y se guarda cifrada):
+
+```powershell
+python -m solicitudes.usuarios crear soporte
+```
+
+Para ver las cuentas existentes: `python -m solicitudes.usuarios listar`
+
 ## Ejecución
 
 ```powershell
