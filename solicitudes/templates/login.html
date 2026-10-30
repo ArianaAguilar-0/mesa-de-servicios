@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block titulo %}Iniciar sesión{% endblock %}
+{% block seccion %}Acceso del personal de soporte{% endblock %}
+{% block contenido %}
+<section class="tarjeta acceso">
+  <h1>Iniciar sesión</h1>
+  <p class="ayuda">Solo para el personal de soporte técnico.</p>
+  {% include "_avisos.html" %}
+  {% if error %}<div class="aviso error" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="{{ url_for('login_enviar') }}">
+    <input type="hidden" name="siguiente" value="{{ siguiente }}">
+    <label for="usuario">Usuario</label>
+    <input id="usuario" name="usuario" autocomplete="username" required autofocus>
+    <label for="contrasena">Contraseña</label>
+    <input id="contrasena" name="contrasena" type="password" autocomplete="current-password" required>
+    <button type="submit">Ingresar</button>
+  </form>
+</section>
+{% endblock %}

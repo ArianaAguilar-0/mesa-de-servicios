@@ -30,6 +30,13 @@ CREATE TABLE IF NOT EXISTS historial (
 );
 
 CREATE INDEX IF NOT EXISTS idx_historial_solicitud ON historial(solicitud_id);
+
+CREATE TABLE IF NOT EXISTS usuarios_soporte (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario TEXT NOT NULL UNIQUE,
+    hash_contrasena TEXT NOT NULL,
+    fecha_creacion TEXT NOT NULL
+);
 """
 
 
@@ -160,6 +167,25 @@ class Repositorio:
             )
             if cursor.rowcount:
                 self._insertar_historial(con, solicitud_id, entrada_historial)
+
+    def crear_usuario(self, usuario, hash_contrasena, fecha):
+        with self._conexion() as con:
+            con.execute(
+                "INSERT INTO usuarios_soporte (usuario, hash_contrasena, fecha_creacion) VALUES (?, ?, ?)",
+                (usuario, hash_contrasena, fecha),
+            )
+
+    def obtener_usuario(self, usuario):
+        with self._conexion() as con:
+            fila = con.execute(
+                "SELECT usuario, hash_contrasena FROM usuarios_soporte WHERE usuario = ?", (usuario,)
+            ).fetchone()
+        return dict(fila) if fila else None
+
+    def listar_usuarios(self):
+        with self._conexion() as con:
+            filas = con.execute("SELECT usuario, fecha_creacion FROM usuarios_soporte ORDER BY usuario").fetchall()
+        return [dict(f) for f in filas]
 
     def historial(self, solicitud_id):
         with self._conexion() as con:

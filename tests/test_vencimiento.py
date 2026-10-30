@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from solicitudes.app import create_app
+from solicitudes.autenticacion import crear_usuario
 from solicitudes.repositorio import Repositorio
 from solicitudes.servicio import ServicioSolicitudes
 
@@ -119,7 +120,9 @@ def test_panel_de_soporte_muestra_vencidas(ruta_db, reloj, datos_validos):
     servicio._reloj = reloj
     codigo = _registrar(servicio, datos_validos)
     reloj.avanzar(hours=4, minutes=30)
+    crear_usuario(servicio.repo, "soporte", "clave-de-prueba-123")
     cliente = app.test_client()
+    cliente.post("/login", data={"usuario": "soporte", "contrasena": "clave-de-prueba-123"})
     html = cliente.get("/soporte?vencidas=1").get_data(as_text=True)
     assert codigo in html and "Vencida" in html
     assert "Vencida desde" in cliente.get(f"/soporte/{codigo}").get_data(as_text=True)
