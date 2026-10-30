@@ -32,6 +32,7 @@ ETIQUETAS = {
     "registro": "Registro",
     "asignacion": "Asignación",
     "cambio_estado": "Cambio de estado",
+    "vencimiento": "Vencimiento",
 }
 
 
@@ -108,11 +109,13 @@ def _rutas_soporte(app, servicio):
     def soporte():
         estado = request.args.get("estado", "")
         codigo = request.args.get("codigo", "")
+        vencidas = request.args.get("vencidas") == "1"
         return render_template(
             "soporte.html",
-            solicitudes=servicio.listar(estado, codigo),
+            solicitudes=servicio.listar(estado, codigo, vencidas),
             estado=estado,
             codigo=codigo,
+            vencidas=vencidas,
         )
 
     def mostrar_detalle(codigo, datos=None, errores=None, estado_http=200):
@@ -196,7 +199,7 @@ def _rutas_api(app, servicio):
     def api_asignar(codigo):
         datos = cuerpo_json()
         return jsonify(
-            servicio.asignar_tecnico(codigo, datos.get("tecnico"), datos.get("usuario"))
+            servicio.asignar_tecnico(codigo, datos.get("tecnico"))
         )
 
     @app.put("/api/solicitudes/<codigo>/estado")
@@ -204,7 +207,7 @@ def _rutas_api(app, servicio):
         datos = cuerpo_json()
         return jsonify(
             servicio.cambiar_estado(
-                codigo, datos.get("estado"), datos.get("comentario"), datos.get("usuario")
+                codigo, datos.get("estado"), datos.get("comentario")
             )
         )
 

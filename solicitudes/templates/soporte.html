@@ -19,6 +19,9 @@
     <label for="codigo">Buscar por código</label>
     <input id="codigo" name="codigo" value="{{ codigo }}" placeholder="SOL-…">
   </div>
+  <div>
+    <label><input type="checkbox" name="vencidas" value="1" {{ 'checked' if vencidas }}> Solo vencidas</label>
+  </div>
   <button type="submit">Filtrar</button>
 </form>
 
@@ -35,7 +38,8 @@
         <td>{{ s.solicitante }}</td>
         <td>{{ s.categoria }}</td>
         <td>{{ s.prioridad | etiqueta }}</td>
-        <td><span class="estado" data-estado="{{ s.estado }}">{{ s.estado | etiqueta }}</span></td>
+        <td><span class="estado" data-estado="{{ s.estado }}">{{ s.estado | etiqueta }}</span>
+          {% if s.vencida_en %}<span class="vencida" title="Vencida desde {{ s.vencida_en }}">Vencida</span>{% endif %}</td>
         <td>{{ s.tecnico or "—" }}</td>
       </tr>
       {% endfor %}

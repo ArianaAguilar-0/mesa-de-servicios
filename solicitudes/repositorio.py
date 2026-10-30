@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS solicitudes (
     estado TEXT NOT NULL,
     tecnico TEXT,
     fecha_creacion TEXT NOT NULL,
-    fecha_actualizacion TEXT NOT NULL
+    fecha_actualizacion TEXT NOT NULL,
+    vencida_en TEXT
 );
 
 CREATE TABLE IF NOT EXISTS historial (
@@ -52,6 +53,10 @@ class Repositorio:
     def inicializar(self):
         with self._conexion() as con:
             con.executescript(ESQUEMA)
+            # Migración: bases creadas antes de la versión 1.1 no tienen vencida_en.
+            columnas = {f["name"] for f in con.execute("PRAGMA table_info(solicitudes)")}
+            if "vencida_en" not in columnas:
+                con.execute("ALTER TABLE solicitudes ADD COLUMN vencida_en TEXT")
 
     def existe_codigo(self, codigo):
         with self._conexion() as con:
@@ -117,9 +122,11 @@ class Repositorio:
             ).fetchone()
         return dict(fila) if fila else None
 
-    def listar(self, estado=None, codigo=None):
+    def listar(self, estado=None, codigo=None, solo_vencidas=False):
         """Lista solicitudes, de la más reciente a la más antigua."""
         condiciones, parametros = [], []
+        if solo_vencidas:
+            condiciones.append("vencida_en IS NOT NULL")
         if estado:
             condiciones.append("estado = ?")
             parametros.append(estado)
@@ -132,6 +139,27 @@ class Repositorio:
                 f"SELECT * FROM solicitudes {donde} ORDER BY id DESC", parametros
             ).fetchall()
         return [dict(f) for f in filas]
+
+    def criticas_sin_atender(self, prioridad, estados):
+        """Solicitudes de la prioridad dada, en los estados dados y aún no vencidas."""
+        marcas = ", ".join("?" for _ in estados)
+        with self._conexion() as con:
+            filas = con.execute(
+                f"""SELECT id, fecha_creacion FROM solicitudes
+                   WHERE prioridad = ? AND estado IN ({marcas}) AND vencida_en IS NULL""",
+                (prioridad, *estados),
+            ).fetchall()
+        return [dict(f) for f in filas]
+
+    def marcar_vencida(self, solicitud_id, fecha, entrada_historial):
+        """Marca la solicitud como vencida y lo registra en el historial (una sola vez)."""
+        with self._conexion() as con:
+            cursor = con.execute(
+                "UPDATE solicitudes SET vencida_en = ? WHERE id = ? AND vencida_en IS NULL",
+                (fecha, solicitud_id),
+            )
+            if cursor.rowcount:
+                self._insertar_historial(con, solicitud_id, entrada_historial)
 
     def historial(self, solicitud_id):
         with self._conexion() as con:

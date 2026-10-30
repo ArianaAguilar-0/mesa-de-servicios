@@ -1,6 +1,6 @@
 """Reglas de negocio de la mesa de servicio."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from .codigo import generar_codigo, normalizar_codigo
 from .errores import ErrorValidacion, SolicitudNoEncontrada
@@ -14,20 +14,51 @@ from .validacion import (
 )
 
 USUARIO_SOPORTE = "soporte"
+USUARIO_SISTEMA = "sistema"
 
-
-def ahora():
-    return datetime.now().isoformat(sep=" ", timespec="seconds")
+# Regla de vencimiento (versión 1.1): una solicitud de prioridad crítica que no
+# pasa a "en_proceso" dentro de 4 horas desde su registro se marca como vencida.
+PRIORIDAD_CON_PLAZO = "critica"
+PLAZO_ATENCION = timedelta(hours=4)
+ESTADOS_SIN_ATENDER = ("registrada", "asignada")
+FORMATO_FECHA = "%Y-%m-%d %H:%M:%S"
 
 
 class ServicioSolicitudes:
-    def __init__(self, repositorio):
+    def __init__(self, repositorio, reloj=None):
         self.repo = repositorio
+        self._reloj = reloj or datetime.now
+
+    def _ahora(self):
+        return self._reloj().strftime(FORMATO_FECHA)
+
+    def marcar_vencidas(self):
+        """Marca como vencidas las solicitudes críticas no atendidas a tiempo.
+
+        Devuelve cuántas se marcaron. Se ejecuta antes de listar o consultar, así
+        el estado mostrado siempre está al día sin depender de un proceso aparte.
+        """
+        momento = self._reloj()
+        marcadas = 0
+        for s in self.repo.criticas_sin_atender(PRIORIDAD_CON_PLAZO, ESTADOS_SIN_ATENDER):
+            limite = datetime.strptime(s["fecha_creacion"], FORMATO_FECHA) + PLAZO_ATENCION
+            if momento >= limite:
+                fecha = limite.strftime(FORMATO_FECHA)
+                self.repo.marcar_vencida(s["id"], fecha, {
+                    "fecha": fecha,
+                    "accion": "vencimiento",
+                    "detalle": "Solicitud crítica sin atender en 4 horas: marcada como vencida.",
+                    "estado_anterior": None,
+                    "estado_nuevo": None,
+                    "usuario": USUARIO_SISTEMA,
+                })
+                marcadas += 1
+        return marcadas
 
     def registrar(self, datos):
         """Valida y registra una nueva solicitud. Devuelve la solicitud creada."""
         limpios = validar_solicitud(datos)
-        fecha = ahora()
+        fecha = self._ahora()
         solicitud = {
             **limpios,
             "codigo": generar_codigo(self.repo.existe_codigo),
@@ -53,6 +84,7 @@ class ServicioSolicitudes:
             raise ErrorValidacion(
                 {"codigo": "Escriba el código de la solicitud que desea consultar."}
             )
+        self.marcar_vencidas()
         solicitud = self.repo.obtener(normalizar_codigo(escrito))
         if solicitud is None:
             raise SolicitudNoEncontrada(escrito)
@@ -64,16 +96,17 @@ class ServicioSolicitudes:
         solicitud["historial"] = self.repo.historial(solicitud.pop("id"))
         return solicitud
 
-    def listar(self, estado=None, codigo=None):
-        """Lista solicitudes filtrando por estado y por parte del código."""
+    def listar(self, estado=None, codigo=None, solo_vencidas=False):
+        """Lista solicitudes filtrando por estado, parte del código y vencimiento."""
+        self.marcar_vencidas()
         estado = texto(estado).lower()
         if estado not in ESTADOS:
             estado = None
-        return self.repo.listar(estado, normalizar_codigo(codigo) or None)
+        return self.repo.listar(estado, normalizar_codigo(codigo) or None, solo_vencidas)
 
     def _guardar_cambio(self, solicitud, cambios, accion, detalle, usuario):
         """Guarda el cambio y su entrada de historial en una sola transacción."""
-        fecha = ahora()
+        fecha = self._ahora()
         entrada = {
             "fecha": fecha,
             "accion": accion,
@@ -94,7 +127,7 @@ class ServicioSolicitudes:
         tecnico = validar_tecnico(tecnico)
 
         anterior = solicitud["tecnico"]
-        if anterior == tecnico:
+        if anterior and anterior.casefold() == tecnico.casefold():
             raise ErrorValidacion(
                 {"tecnico": f"La solicitud ya está asignada a {tecnico}."}
             )

@@ -6,5 +6,6 @@
   <dt>Categoría</dt><dd>{{ solicitud.categoria | etiqueta }}</dd>
   <dt>Prioridad</dt><dd>{{ solicitud.prioridad | etiqueta }}</dd>
   <dt>Registrada</dt><dd>{{ solicitud.fecha_creacion }}</dd>
+  {% if solicitud.vencida_en %}<dt>Vencida</dt><dd><span class="vencida">Vencida desde {{ solicitud.vencida_en }}</span></dd>{% endif %}
   <dt>Descripción</dt><dd>{{ solicitud.descripcion }}</dd>
 </dl>
